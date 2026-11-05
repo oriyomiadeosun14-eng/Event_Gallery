@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+// The connection URL lives in prisma.config.ts (Prisma 7+).
+datasource db {
+  provider = "mysql"
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum MediaStatus {
+  PENDING
+  APPROVED
+  HIDDEN
+}
+
+model Album {
+  id    Int     @id @default(autoincrement())
+  name  String  @unique
+  slug  String  @unique
+  media Media[]
+}
+
+model Media {
+  id           Int         @id @default(autoincrement())
+  url          String      @db.VarChar(1024)
+  publicId     String      @unique
+  type         MediaType
+  width        Int?
+  height       Int?
+  uploaderName String?
+  caption      String?     @db.Text
+  status       MediaStatus @default(APPROVED)
+  featured     Boolean     @default(false)
+  albumId      Int?
+  album        Album?      @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+
+  @@index([status, createdAt])
+}
+
+/// A guestbook note. Goes through the same moderation flow as photos.
+model Message {
+  id        Int         @id @default(autoincrement())
+  name      String      @db.VarChar(80)
+  relation  String?     @db.VarChar(80)
+  body      String      @db.Text
+  status    MediaStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+
+  @@index([status, createdAt])
+}
