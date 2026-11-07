@@ -125,11 +125,16 @@ export async function getAllMessagesForAdmin() {
 /** "248 memories from 61 guests": approved uploads, and how many named guests shared them. */
 export async function getEventStats() {
   await connection();
-  const [memories, guests, messages] = await Promise.all([
+  const [memories, names, messages] = await Promise.all([
     prisma.media.count({ where: { status: "APPROVED" } }),
-    // MySQL's default collation groups names case-insensitively, so "Mia" and "mia" count once.
-    prisma.media.groupBy({ by: ["uploaderName"], where: { status: "APPROVED", uploaderName: { not: null } } }),
+    prisma.media.findMany({
+      where: { status: "APPROVED", uploaderName: { not: null } },
+      select: { uploaderName: true },
+      distinct: ["uploaderName"],
+    }),
     prisma.message.count({ where: { status: "APPROVED" } }),
   ]);
-  return { memories, guests: guests.length, messages };
+  // Postgres compares strings case-sensitively, so fold case here: "Mia" and "mia" count once.
+  const guests = new Set(names.map((row) => row.uploaderName!.toLowerCase())).size;
+  return { memories, guests, messages };
 }

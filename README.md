@@ -19,7 +19,7 @@ A private photo and video gallery for a wedding. Guests scan a QR code, upload f
 | | |
 |---|---|
 | Framework | [Next.js 16](https://nextjs.org) (App Router, React 19, Server Components) |
-| Database | MySQL with [Prisma 7](https://www.prisma.io) (MariaDB driver adapter) |
+| Database | PostgreSQL with [Prisma 7](https://www.prisma.io) (`pg` driver adapter) |
 | Media | [Cloudinary](https://cloudinary.com): storage, resizing, video transcoding, ZIP archives |
 | Styling | [Tailwind CSS 4](https://tailwindcss.com) with design tokens |
 | Language | TypeScript |
@@ -27,11 +27,11 @@ A private photo and video gallery for a wedding. Guests scan a QR code, upload f
 ## How it works
 
 ```
-Guest's phone ──upload──▶ Cloudinary ──(url, id, size)──▶ POST /api/media ──▶ MySQL (status: PENDING)
+Guest's phone ──upload──▶ Cloudinary ──(url, id, size)──▶ POST /api/media ──▶ Postgres (status: PENDING)
                                                                                   │
 Admin (/admin) ── approve / hide / feature / delete ──▶ PATCH, DELETE /api/media/[id]
                                                                                   │
-Gallery (/gallery) ◀── approved rows ── MySQL        thumbnails ◀── Cloudinary transformations
+Gallery (/gallery) ◀── approved rows ── Postgres     thumbnails ◀── Cloudinary transformations
 ```
 
 Files go straight from the guest's browser to Cloudinary. The app only stores metadata (who, which moment, status, the Cloudinary URL). The API checks that each URL belongs to this project's Cloudinary account and matches the claimed file type before saving it.
@@ -41,7 +41,7 @@ Files go straight from the guest's browser to Cloudinary. The app only stores me
 ### Prerequisites
 
 - Node.js 20 or newer
-- A MySQL 8 server (local or hosted)
+- A PostgreSQL server (local or hosted)
 - A free [Cloudinary](https://cloudinary.com) account
 
 ### 1. Install
@@ -58,8 +58,8 @@ cp .env.example .env
 
 | Variable | What it is |
 |---|---|
-| `DATABASE_URL` | MySQL connection string, e.g. `mysql://root:PASSWORD@localhost:3306/event_gallery`. URL-encode special characters in the password (`@` → `%40`). Connections to anything other than localhost are encrypted. |
-| `DATABASE_CA_CERT` | Optional. Only for hosted databases whose certificate isn't publicly trusted (e.g. Aiven): paste the CA certificate your provider gives you. |
+| `DATABASE_URL` | PostgreSQL connection string, e.g. `postgresql://postgres:PASSWORD@localhost:5432/event_gallery`. URL-encode special characters in the password (`@` → `%40`). Connections to anything other than localhost are encrypted. |
+| `DATABASE_CA_CERT` | Optional. Only for hosted databases whose certificate isn't publicly trusted: paste the CA certificate your provider gives you. |
 | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Your Cloudinary cloud name (dashboard). |
 | `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | Name of the unsigned upload preset (see step 3). Default `wedding`. |
 | `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | From the Cloudinary dashboard. Server-side only; used for deletes and ZIP downloads. |
@@ -82,10 +82,10 @@ An unsigned preset means anyone who finds it can upload, which is why uploads ar
 ### 4. Create the database tables
 
 ```bash
-npm run db:push
+npm run db:migrate
 ```
 
-The four default albums are created automatically the first time the app talks to the database.
+This applies the migrations in `prisma/migrations` (and creates the database if it doesn't exist yet). The four default albums are created automatically the first time the app talks to the database.
 
 ### 5. Run it
 
@@ -102,8 +102,8 @@ Open <http://localhost:3000>. To test on a phone, use the **Network** address `n
 | `npm run dev` | Start the dev server |
 | `npm run build` / `npm start` | Production build / serve it |
 | `npm run lint` | ESLint |
-| `npm run db:push` | Sync `prisma/schema.prisma` to the database |
-| `npm run db:migrate` | Create a migration (use once you have real data to protect) |
+| `npm run db:migrate` | Apply migrations locally; after editing `prisma/schema.prisma`, creates a new one |
+| `npm run db:push` | Sync the schema without a migration (quick experiments only) |
 | `npm run db:studio` | Browse the database in Prisma Studio |
 
 ## Project structure
@@ -175,4 +175,4 @@ To change how every primary button looks, edit `components/ui/button.tsx`. To ch
 
 ## Deployment
 
-Works on any Node host (for example Vercel) with a hosted MySQL database. Set the same environment variables there, and run `npm run db:push` (or migrations) against the production database once. Files live in Cloudinary, so the server itself doesn't need persistent storage.
+Works on any Node host (for example Vercel) with a hosted PostgreSQL database. Set the same environment variables there, and run `npx prisma migrate deploy` against the production database (once, and again after each new migration). Files live in Cloudinary, so the server itself doesn't need persistent storage.

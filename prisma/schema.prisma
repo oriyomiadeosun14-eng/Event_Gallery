@@ -5,7 +5,7 @@ generator client {
 
 // The connection URL lives in prisma.config.ts (Prisma 7+).
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
 }
 
 enum MediaType {
@@ -34,7 +34,7 @@ model Media {
   width        Int?
   height       Int?
   uploaderName String?
-  caption      String?     @db.Text
+  caption      String?
   status       MediaStatus @default(APPROVED)
   featured     Boolean     @default(false)
   albumId      Int?
@@ -49,7 +49,7 @@ model Message {
   id        Int         @id @default(autoincrement())
   name      String      @db.VarChar(80)
   relation  String?     @db.VarChar(80)
-  body      String      @db.Text
+  body      String
   status    MediaStatus @default(PENDING)
   createdAt DateTime    @default(now())
 
